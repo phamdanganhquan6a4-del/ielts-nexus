@@ -1,12 +1,17 @@
 import { NextResponse } from "next/server";
 import Groq from "groq-sdk";
 import { PrismaClient } from "@prisma/client";
+import { getServerSession } from "next-auth"; // THÊM DÒNG NÀY
+import { authOptions } from "../auth/[...nextauth]/route";
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 const prisma = new PrismaClient();
 
 export async function POST(req: Request) {
   try {
+    // THÊM DÒNG NÀY ĐỂ LẤY THÔNG TIN USER ĐĂNG NHẬP
+    const session = await getServerSession(authOptions);
+
     const { topic, question, essay } = await req.json();
 
     // 1. Gọi AI chấm điểm
@@ -47,8 +52,10 @@ export async function POST(req: Request) {
             skill: 'writing',
             score: aiResponse.overall_score, // Lưu điểm Overall
             topic: topic || "Writing Practice",
-            // Nếu bạn muốn lưu chi tiết bài làm, bạn cần thêm cột vào DB. 
-            // Tạm thời ta chỉ lưu điểm để hiện Dashboard.
+            // THÊM DÒNG NÀY ĐỂ KẾT NỐI VỚI USER TRONG DATABASE
+            user: {
+              connect: { email: session?.user?.email || "" }
+            }
         }
     });
 
