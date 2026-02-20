@@ -1,12 +1,17 @@
 import { NextResponse } from "next/server";
 import Groq from "groq-sdk";
 import { PrismaClient } from "@prisma/client";
+import { getServerSession } from "next-auth"; // THÊM DÒNG NÀY
+import { authOptions } from "../../auth/[...nextauth]/route";
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 const prisma = new PrismaClient();
 
 export async function POST(req: Request) {
   try {
+    // THÊM DÒNG NÀY ĐỂ LẤY SESSION
+    const session = await getServerSession(authOptions);
+
     const { topic, transcript } = await req.json();
 
     const completion = await groq.chat.completions.create({
@@ -39,10 +44,14 @@ export async function POST(req: Request) {
     // LƯU VÀO DATABASE ĐỂ CẬP NHẬT BIỂU ĐỒ RADAR
     const saved = await prisma.result.create({
       data: {
-        skill: 'speaking', // Phải đúng chữ thường để Dashboard lọc data
+        skill: 'speaking', 
         score: report.overall_score,
         topic: topic || "IELTS Speaking Practice",
-      }
+        // SỬA ĐOẠN NÀY ĐỂ DÙNG BIẾN SESSION ĐÃ LẤY Ở TRÊN
+        user: {
+          connect: { email: session?.user?.email || "" } 
+        }
+      },
     });
 
     return NextResponse.json({ ...report, id: saved.id });
